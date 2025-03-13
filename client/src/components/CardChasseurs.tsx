@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import "../styles (anciennement CSS)/pages/CardChasseurs.css";
 import PhotoDeleteForm from "./PhotoDeleteForm";
 
@@ -15,7 +17,7 @@ type PhotoType = {
 
 function CardChasseurs() {
   const [photos, setPhotos] = useState<PhotoType[]>([]);
-  const [selectedPhoto, setSelectedPhoto] = useState<PhotoType | null>(null);
+  const [, setSelectedPhoto] = useState<PhotoType | null>(null);
 
   useEffect(() => {
     fetch(`${import.meta.env.VITE_API_URL}/api/photos`)
@@ -28,11 +30,7 @@ function CardChasseurs() {
       });
   }, []);
 
-  const handleDelete = (photoId: number) => {
-    const isConfirmed = window.confirm(
-      "Êtes-vous sûr·e de vouloir supprimer cette photo ?",
-    );
-    if (!isConfirmed) return;
+  const handleDelete = (photoId: number, toastId: React.ReactText) => {
     fetch(`${import.meta.env.VITE_API_URL}/api/photos/${photoId}`, {
       method: "DELETE",
     })
@@ -41,21 +39,45 @@ function CardChasseurs() {
           setPhotos((prevPhotos) =>
             prevPhotos.filter((photo) => photo.id !== photoId),
           );
+          toast.success("Photo supprimée avec succès !");
         } else {
-          console.error("Failed to delete photo");
+          toast.error("Échec de la suppression de la photo.");
         }
       })
       .catch((error) => {
+        toast.error("Erreur lors de la suppression de la photo.");
         console.error("Error deleting photo:", error);
+      })
+      .finally(() => {
+        toast.dismiss(toastId); // Ferme le toast après l'action
       });
   };
 
-  const formatDate = (date: string) => {
-    const dateObject = new Date(date);
-    const day = dateObject.getDate().toString().padStart(2, "0");
-    const month = (dateObject.getMonth() + 1).toString().padStart(2, "0");
-    const year = dateObject.getFullYear();
-    return `${day}-${month}-${year}`;
+  const confirmDelete = (photoId: number) => {
+    const toastId = toast.warn(
+      <div>
+        <p>Êtes-vous sûr·e de vouloir supprimer cette photo ?</p>
+        <button
+          type="button"
+          onClick={() => handleDelete(photoId, toastId)}
+          style={{
+            marginRight: "10px",
+            padding: "5px 10px",
+            background: "red",
+            color: "white",
+            border: "none",
+            cursor: "pointer",
+          }}
+        >
+          Oui, supprimer
+        </button>
+      </div>,
+      {
+        position: "top-center",
+        autoClose: false,
+        closeOnClick: false,
+      },
+    );
   };
 
   return (
@@ -90,17 +112,15 @@ function CardChasseurs() {
               <p className="artist_content">{photo.artist}</p>
               <p className="photo_content">{photo.content}</p>
               <div className="delete_photo_content">
-                <p className="date_content">{formatDate(photo.dateoftheday)}</p>
+                <p className="date_content">{photo.dateoftheday}</p>
                 <PhotoDeleteForm
-                  onSubmit={(event: { preventDefault: () => void }) =>
-                    event.preventDefault()
-                  }
+                  onSubmit={(event) => event.preventDefault()}
                   id={0}
                 >
                   <button
                     type="button"
                     className="delete-photo-button"
-                    onClick={() => handleDelete(photo.id)}
+                    onClick={() => confirmDelete(photo.id)}
                   >
                     Supprimer
                   </button>
@@ -108,36 +128,6 @@ function CardChasseurs() {
               </div>
             </section>
           ))}
-
-          {selectedPhoto && (
-            // biome-ignore lint/a11y/useKeyWithClickEvents: <explanation>
-            <div
-              className="modal-overlay"
-              onClick={() => setSelectedPhoto(null)}
-            >
-              {/* biome-ignore lint/a11y/useKeyWithClickEvents: <explanation> */}
-              <div
-                className="modal-content"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  type="button"
-                  className="close-button"
-                  onClick={() => setSelectedPhoto(null)}
-                >
-                  X
-                </button>
-                <img
-                  className="modal-image"
-                  src={`${import.meta.env.VITE_API_URL}/photos/${
-                    selectedPhoto.picture || "default-picture.jpg"
-                  }`}
-                  alt={selectedPhoto.title}
-                />
-                <p className="modal-title">{selectedPhoto.title}</p>
-              </div>
-            </div>
-          )}
         </div>
       </section>
     </>
